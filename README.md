@@ -118,30 +118,6 @@ C:\Users\YourName\AppData\Local\SteamGuardDesktop\vault.dat
 
 The vault is encrypted for the Windows account that created it. Copying `vault.dat` to another computer or Windows account is not a reliable backup. Use the application's password-encrypted backup feature instead.
 
-## Safe GitHub uploads
-
-Account data is not compiled into the executable and is not stored in the source tree by default. The included `.gitignore` excludes common sensitive and generated files.
-
-Never upload or commit:
-
-- `vault.dat`
-- `*.maFile`
-- `*.sgbackup`
-- Recovery codes
-- Steam passwords or session tokens
-- Screenshots containing account codes
-- Files copied from `%LOCALAPPDATA%\SteamGuardDesktop`
-
-Before pushing, review every staged file:
-
-```powershell
-git status
-git diff --cached
-git ls-files "*.maFile" "*.sgbackup" "vault.dat"
-```
-
-The final command should print nothing.
-
 ## Build from source
 
 Requirements:
