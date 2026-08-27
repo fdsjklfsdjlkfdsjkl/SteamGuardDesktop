@@ -2,7 +2,7 @@
 
 A modern, unofficial Steam Guard authenticator for Windows.
 
-SteamGuardDesktop can enroll a Steam Guard authenticator, generate five-character login codes, and approve or deny Steam trade and Market confirmations without relying on the no-longer-supported Steam Desktop Authenticator client.
+SteamGuardDesktop can enroll a Steam Guard authenticator, generate five-character login codes, approve or deny browser/client sign-ins, and manage Steam trade and Market confirmations without relying on the no-longer-supported Steam Desktop Authenticator client.
 
 > [!IMPORTANT]
 > This project is not affiliated with Valve or Steam. Valve's official Steam Mobile app provides stronger two-factor separation and should be preferred whenever possible.
@@ -15,7 +15,9 @@ SteamGuardDesktop can enroll a Steam Guard authenticator, generate five-characte
 - Enroll a new Steam Guard authenticator
 - Detect whether Steam sends the enrollment code by email or SMS
 - Resume an enrollment that was saved before finalization
+- Sign in again to create or refresh the Steam session used for confirmations
 - Generate Steam's rotating five-character login codes
+- Review and approve or deny Steam browser/client sign-in requests
 - List, approve, and deny trade and Steam Market confirmations
 - Import compatible SDA `.maFile` account files
 - Encrypt the local vault with Windows DPAPI
@@ -80,7 +82,7 @@ Do not sign out of all trusted Steam sessions until this test succeeds.
 
 ## Trade and Market confirmations
 
-Select an enrolled account and click **Confirm trades**. The confirmation window can:
+Select an enrolled account and click **Trades & listings**. The confirmation window can:
 
 - Refresh the list of pending Steam actions
 - Display the action type, headline, and summary
@@ -89,7 +91,18 @@ Select an enrolled account and click **Confirm trades**. The confirmation window
 
 The application shows a final review prompt before sending an approval or denial to Steam. Read every entry carefully—approving an unexpected trade can permanently transfer inventory items.
 
-Confirmation management requires a current saved Steam session. The application can refresh an access token while its saved refresh token remains valid. If Steam rejects the entire session, sign-in/session-refresh support may be required in a future release.
+Confirmation management requires a current saved Steam session. The application can refresh an access token while its saved refresh token remains valid. Use **Sign in / refresh** whenever Steam rejects the saved session; the Steam password is used interactively and is not stored.
+
+## Browser and client login approvals
+
+When Steam shows **Use the Steam Mobile App to confirm your sign in**, select the account in SteamGuardDesktop and click **Login approvals**. The window shows each pending request's platform, device name, IP address, location, and Steam risk warnings.
+
+1. Start the login in Steam or your browser.
+2. Open **Login approvals** and click **Refresh** if the request is not visible yet.
+3. Select the request and verify every detail.
+4. Click **Approve** only if you personally started it, or **Deny** if it is unexpected.
+
+This is separate from **Trades & listings**, which handles inventory transfers and Steam Market actions. Login approvals require a current saved Steam session; use **Sign in / refresh** if Steam rejects it.
 
 ## Import from SDA
 
@@ -191,7 +204,7 @@ Enable automatic date, time, and time-zone synchronization in Windows, then wait
 
 ### Confirmations do not load
 
-The saved Steam session may be incomplete or expired. Enrollment performed by this app stores the required session data. An imported `.maFile` must contain current session information as well as the identity secret.
+The saved Steam session may be incomplete or expired. Select the account and click **Sign in / refresh**, then reopen **Trades & listings**. An imported `.maFile` must also contain the identity secret used to sign confirmation requests.
 
 ### I lost the local vault
 

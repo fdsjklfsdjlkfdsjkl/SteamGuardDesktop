@@ -12,6 +12,15 @@ foreach (long time in times)
     Assert(expected == actual, $"Code mismatch at {time}: {expected} != {actual}");
 }
 
+byte[] loginSignature = LoginApprovalSignature.Build(
+    "zvIayp3JPvtvX/QGHqsqKBk/44s=", 76561197960265728, 1, 2372462679780599330);
+byte[] expectedLoginSignature =
+[
+    56, 233, 253, 249, 254, 89, 110, 161, 18, 35, 35, 144, 14, 217, 210, 150,
+    170, 110, 61, 166, 176, 161, 140, 211, 108, 78, 138, 202, 61, 52, 85, 46
+];
+Assert(loginSignature.SequenceEqual(expectedLoginSignature), "Login-approval signature mismatch.");
+
 string root = Path.Combine(Path.GetTempPath(), "SteamGuardDesktop.Tests", Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try

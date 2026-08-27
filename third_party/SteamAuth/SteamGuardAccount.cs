@@ -12,6 +12,7 @@ namespace SteamAuth
 {
     public class SteamGuardAccount
     {
+        private const string CONFIRMATION_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36";
         [JsonProperty("shared_secret")]
         public string SharedSecret { get; set; }
 
@@ -143,7 +144,15 @@ namespace SteamAuth
         public async Task<Confirmation[]> FetchConfirmationsAsync()
         {
             string url = this.GenerateConfirmationURL();
-            string response = await SteamWeb.GETRequest(url, this.Session.GetCookies());
+            string response;
+            using (CookieAwareWebClient wc = new CookieAwareWebClient())
+            {
+                wc.Encoding = Encoding.UTF8;
+                wc.CookieContainer = this.Session.GetCookies();
+                wc.Headers[HttpRequestHeader.UserAgent] = CONFIRMATION_USER_AGENT;
+                wc.Headers[HttpRequestHeader.AcceptLanguage] = "en-US,en;q=0.9";
+                response = await wc.DownloadStringTaskAsync(url);
+            }
             return FetchConfirmationInternal(response);
         }
 
@@ -151,9 +160,12 @@ namespace SteamAuth
         {
             var confirmationsResponse = JsonConvert.DeserializeObject<ConfirmationsResponse>(response);
 
-            if (confirmationsResponse == null || !confirmationsResponse.Success)
+            if (confirmationsResponse == null)
+                throw new Exception("Steam returned an invalid confirmation response.");
+
+            if (!confirmationsResponse.Success)
             {
-                throw new Exception(confirmationsResponse.Message);
+                throw new Exception(confirmationsResponse.Message ?? "Steam returned an unsuccessful confirmation response.");
             }
 
             if (confirmationsResponse.NeedAuthentication)
@@ -161,7 +173,7 @@ namespace SteamAuth
                 throw new Exception("Needs Authentication");
             }
 
-            return confirmationsResponse.Confirmations;
+            return confirmationsResponse.Confirmations ?? Array.Empty<Confirmation>();
         }
 
         /// <summary>
@@ -201,25 +213,30 @@ namespace SteamAuth
         {
             string url = APIEndpoints.COMMUNITY_BASE + "/mobileconf/ajaxop";
             string queryString = "?op=" + op + "&";
-            // tag is different from op now
-            string tag = op == "allow" ? "accept" : "reject";
-            queryString += GenerateConfirmationQueryParams(tag);
+            queryString += GenerateConfirmationQueryParams("conf");
             queryString += "&cid=" + conf.ID + "&ck=" + conf.Key;
             url += queryString;
 
-            string response = await SteamWeb.GETRequest(url, this.Session.GetCookies());
+            string response;
+            using (CookieAwareWebClient wc = new CookieAwareWebClient())
+            {
+                wc.Encoding = Encoding.UTF8;
+                wc.CookieContainer = this.Session.GetCookies();
+                wc.Headers[HttpRequestHeader.UserAgent] = CONFIRMATION_USER_AGENT;
+                wc.Headers[HttpRequestHeader.AcceptLanguage] = "en-US,en;q=0.9";
+                wc.Headers["Origin"] = APIEndpoints.COMMUNITY_BASE;
+                response = await wc.DownloadStringTaskAsync(url);
+            }
             if (response == null) return false;
 
             SendConfirmationResponse confResponse = JsonConvert.DeserializeObject<SendConfirmationResponse>(response);
-            return confResponse.Success;
+            return confResponse != null && confResponse.Success;
         }
 
         private async Task<bool> _sendMultiConfirmationAjax(Confirmation[] confs, string op)
         {
             string url = APIEndpoints.COMMUNITY_BASE + "/mobileconf/multiajaxop";
-            // tag is different from op now
-            string tag = op == "allow" ? "accept" : "reject";
-            string query = "op=" + op + "&" + GenerateConfirmationQueryParams(tag);
+            string query = "op=" + op + "&" + GenerateConfirmationQueryParams("conf");
             foreach (var conf in confs)
             {
                 query += "&cid[]=" + conf.ID + "&ck[]=" + conf.Key;
@@ -231,14 +248,15 @@ namespace SteamAuth
                 wc.Encoding = Encoding.UTF8;
                 wc.CookieContainer = this.Session.GetCookies();
                 wc.Headers["Origin"] = APIEndpoints.COMMUNITY_BASE;
-                wc.Headers[HttpRequestHeader.UserAgent] = SteamWeb.MOBILE_APP_USER_AGENT;
+                wc.Headers[HttpRequestHeader.UserAgent] = CONFIRMATION_USER_AGENT;
+                wc.Headers[HttpRequestHeader.AcceptLanguage] = "en-US,en;q=0.9";
                 wc.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded; charset=UTF-8";
                 response = await wc.UploadStringTaskAsync(new Uri(url), "POST", query);
             }
             if (response == null) return false;
 
             SendConfirmationResponse confResponse = JsonConvert.DeserializeObject<SendConfirmationResponse>(response);
-            return confResponse.Success;
+            return confResponse != null && confResponse.Success;
         }
 
         public string GenerateConfirmationURL(string tag = "conf")

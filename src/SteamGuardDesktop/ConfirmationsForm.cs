@@ -59,7 +59,7 @@ internal sealed class ConfirmationsForm : Form
         }
         if (_account.Session is null || string.IsNullOrWhiteSpace(_account.Session.RefreshToken))
         {
-            ShowError("This account has no saved Steam session. Enroll it with this app or import a complete maFile.");
+            ShowError("This account has no saved Steam session. Close this window and use Sign in / refresh.");
             return;
         }
 
@@ -91,7 +91,7 @@ internal sealed class ConfirmationsForm : Form
         catch (Exception ex)
         {
             ShowError(ex.Message.Contains("Needs Authentication", StringComparison.OrdinalIgnoreCase)
-                ? "Steam rejected the saved session. A sign-in refresh is required; re-enroll or import a maFile with a current session."
+                ? "Steam rejected the saved session. Close this window and use Sign in / refresh."
                 : "Could not load confirmations: " + ex.Message);
         }
         finally
@@ -125,11 +125,14 @@ internal sealed class ConfirmationsForm : Form
         SetBusy(true, approve ? "Approving selected confirmations..." : "Denying selected confirmations...");
         try
         {
-            bool success = approve
-                ? await _account.AcceptMultipleConfirmations(selected)
-                : await _account.DenyMultipleConfirmations(selected);
-            if (!success)
-                throw new InvalidOperationException("Steam returned an unsuccessful response.");
+            foreach (Confirmation confirmation in selected)
+            {
+                bool success = approve
+                    ? await _account.AcceptConfirmation(confirmation)
+                    : await _account.DenyConfirmation(confirmation);
+                if (!success)
+                    throw new InvalidOperationException($"Steam rejected the action for: {confirmation.Headline}");
+            }
             await RefreshAsync();
         }
         catch (Exception ex)

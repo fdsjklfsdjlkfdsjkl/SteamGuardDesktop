@@ -19,7 +19,7 @@ internal sealed class MainForm : Form
     {
         Text = "Steam Guard Desktop";
         Width = 790;
-        Height = 500;
+        Height = 520;
         MinimumSize = new Size(720, 450);
 
         var warning = new Label
@@ -51,7 +51,9 @@ internal sealed class MainForm : Form
         content.Controls.Add(_state);
 
         var copy = new Button { Text = "Copy code", Width = 125, Height = 34 };
-        var confirmations = new Button { Text = "Confirm trades", Width = 135, Height = 34 };
+        var signIn = new Button { Text = "Sign in / refresh", Width = 135, Height = 34 };
+        var loginApprovals = new Button { Text = "Login approvals", Width = 135, Height = 34 };
+        var confirmations = new Button { Text = "Trades & listings", Width = 145, Height = 34 };
         var recovery = new Button { Text = "Show recovery code", Width = 155, Height = 34 };
         var add = new Button { Text = "Add account", Width = 125, Height = 34 };
         var resume = new Button { Text = "Resume setup", Width = 125, Height = 34 };
@@ -59,7 +61,7 @@ internal sealed class MainForm : Form
         var export = new Button { Text = "Encrypted backup", Width = 145, Height = 34 };
         var remove = new Button { Text = "Remove local copy", Width = 145, Height = 34 };
         var buttons = new FlowLayoutPanel { AutoSize = true, Width = 480, Margin = new Padding(0, 24, 0, 0) };
-        buttons.Controls.AddRange([copy, confirmations, recovery, add, resume, import, export, remove]);
+        buttons.Controls.AddRange([copy, signIn, loginApprovals, confirmations, recovery, add, resume, import, export, remove]);
         content.Controls.Add(buttons);
         body.Controls.Add(content, 1, 0);
         Controls.Add(body);
@@ -68,6 +70,8 @@ internal sealed class MainForm : Form
         _accounts.SelectedIndexChanged += (_, _) => RenderCode();
         _timer.Tick += (_, _) => RenderCode();
         copy.Click += (_, _) => CopyCode();
+        signIn.Click += (_, _) => SignInSelectedAccount();
+        loginApprovals.Click += (_, _) => ShowLoginApprovals();
         confirmations.Click += (_, _) => ShowConfirmations();
         recovery.Click += (_, _) => ShowRecoveryCode();
         add.Click += (_, _) => AddAccount();
@@ -154,8 +158,71 @@ internal sealed class MainForm : Form
         SteamGuardAccount? account = Selected;
         if (account is null)
             return;
+        if (!account.FullyEnrolled)
+        {
+            MessageBox.Show(this, "Finish this account's authenticator setup before loading confirmations.", Text,
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        if (NeedsFreshSession(account) && !SignInAccount(account))
+            return;
+
         using var form = new ConfirmationsForm(account, () => _vault.Save(_items));
         form.ShowDialog(this);
+    }
+
+    private void ShowLoginApprovals()
+    {
+        SteamGuardAccount? account = Selected;
+        if (account is null)
+            return;
+        if (!account.FullyEnrolled)
+        {
+            MessageBox.Show(this, "Finish this account's authenticator setup before loading login approvals.", Text,
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        if (NeedsFreshSession(account) && !SignInAccount(account))
+            return;
+
+        using var form = new LoginApprovalsForm(account, () => _vault.Save(_items));
+        form.ShowDialog(this);
+    }
+
+    private void SignInSelectedAccount()
+    {
+        SteamGuardAccount? account = Selected;
+        if (account is null)
+            return;
+        if (!account.FullyEnrolled)
+        {
+            MessageBox.Show(this, "Finish this account's authenticator setup first.", Text,
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        _ = SignInAccount(account);
+    }
+
+    private bool SignInAccount(SteamGuardAccount account)
+    {
+        using var form = new SessionLoginForm(account, () => _vault.Save(_items));
+        form.ShowDialog(this);
+        return form.LoginSucceeded;
+    }
+
+    private static bool NeedsFreshSession(SteamGuardAccount account)
+    {
+        try
+        {
+            return account.Session is null || string.IsNullOrWhiteSpace(account.Session.RefreshToken) ||
+                   account.Session.IsRefreshTokenExpired();
+        }
+        catch
+        {
+            return true;
+        }
     }
 
     private void AddAccount()
