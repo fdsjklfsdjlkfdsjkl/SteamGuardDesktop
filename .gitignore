@@ -1,0 +1,10 @@
+bin/
+obj/
+dist/
+.vs/
+*.user
+*.suo
+*.sgbackup
+*.maFile
+vault.dat
+*.zip
